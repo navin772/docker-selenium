@@ -34,37 +34,37 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - k8s-version: 'v1.25.16'
+          - k8s-version: 'v1.26.15'
             test-strategy: disabled
             cluster: 'minikube'
             helm-version: 'v3.10.3'
             docker-version: '24.0.9'
             test-upgrade: true
-          - k8s-version: 'v1.26.15'
+          - k8s-version: 'v1.27.16'
             test-strategy: job
             cluster: 'minikube'
             helm-version: 'v3.11.3'
             docker-version: '24.0.9'
             test-upgrade: true
-          - k8s-version: 'v1.27.16'
+          - k8s-version: 'v1.28.13'
             test-strategy: deployment
             cluster: 'minikube'
             helm-version: 'v3.12.3'
             docker-version: '24.0.9'
             test-upgrade: true
-          - k8s-version: 'v1.28.13'
+          - k8s-version: 'v1.29.8'
             test-strategy: job_https
             cluster: 'minikube'
             helm-version: 'v3.13.3'
             docker-version: '25.0.5'
             test-upgrade: true
-          - k8s-version: 'v1.29.8'
+          - k8s-version: 'v1.30.4'
             test-strategy: job_hostname
             cluster: 'minikube'
             helm-version: 'v3.14.4'
             docker-version: '26.1.4'
             test-upgrade: true
-          - k8s-version: 'v1.30.4'
+          - k8s-version: 'v1.31.0'
             test-strategy: deployment_https
             cluster: 'minikube'
             helm-version: 'v3.15.4'
@@ -91,8 +91,7 @@ jobs:
           timeout_minutes: 10
           max_attempts: 3
           command: |
-            make chart_setup_env
-            make set_containerd_image_store
+            make setup_dev_env
       - name: Output Docker info
         run: docker info
       - name: Set up Python
@@ -100,6 +99,8 @@ jobs:
         with:
           python-version: '3.11'
           check-latest: true
+      - name: Verify chart configuration up-to-date
+        run: make lint_readme_charts
       - name: Get branch name (only for push to branch)
         if: github.event_name == 'push'
         run: echo "BRANCH=$(echo ${PUSH_BRANCH##*/})" >> $GITHUB_ENV

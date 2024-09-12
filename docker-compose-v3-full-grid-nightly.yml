@@ -1,47 +1,36 @@
-# To execute this docker compose yml file use `docker compose -f docker-compose-v3-full-grid-secure.yml up`
+# To execute this docker compose yml file use `docker compose -f docker-compose-v3-full-grid-nightly.yml up --force-recreate`
 # Add the `-d` flag at the end for detached execution
-# To stop the execution, hit Ctrl+C, and then `docker compose -f docker-compose-v3-full-grid-secure.yml down`
+# To stop the execution, hit Ctrl+C, and then `docker compose -f docker-compose-v3-full-grid-nightly.yml down`
 version: "3"
 services:
   selenium-event-bus:
-    image: selenium/event-bus:4.24.0-20240907
+    image: selenium/event-bus:nightly
     container_name: selenium-event-bus
     ports:
       - "4442:4442"
       - "4443:4443"
       - "5557:5557"
-    volumes:
-      - ./charts/selenium-grid/certs:/opt/selenium/secrets
-    environment:
-      - SE_ENABLE_TLS=true
 
   selenium-sessions:
-    image: selenium/sessions:4.24.0-20240907
+    image: selenium/sessions:nightly
     container_name: selenium-sessions
     ports:
       - "5556:5556"
     depends_on:
       - selenium-event-bus
-    volumes:
-      - ./charts/selenium-grid/certs:/opt/selenium/secrets
     environment:
       - SE_EVENT_BUS_HOST=selenium-event-bus
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-      - SE_ENABLE_TLS=true
 
   selenium-session-queue:
-    image: selenium/session-queue:4.24.0-20240907
+    image: selenium/session-queue:nightly
     container_name: selenium-session-queue
-    volumes:
-      - ./charts/selenium-grid/certs:/opt/selenium/secrets
     ports:
       - "5559:5559"
-    environment:
-      - SE_ENABLE_TLS=true
 
   selenium-distributor:
-    image: selenium/distributor:4.24.0-20240907
+    image: selenium/distributor:nightly
     container_name: selenium-distributor
     ports:
       - "5553:5553"
@@ -49,8 +38,6 @@ services:
       - selenium-event-bus
       - selenium-sessions
       - selenium-session-queue
-    volumes:
-      - ./charts/selenium-grid/certs:/opt/selenium/secrets
     environment:
       - SE_EVENT_BUS_HOST=selenium-event-bus
       - SE_EVENT_BUS_PUBLISH_PORT=4442
@@ -59,10 +46,9 @@ services:
       - SE_SESSIONS_MAP_PORT=5556
       - SE_SESSION_QUEUE_HOST=selenium-session-queue
       - SE_SESSION_QUEUE_PORT=5559
-      - SE_ENABLE_TLS=true
 
   selenium-router:
-    image: selenium/router:4.24.0-20240907
+    image: selenium/router:nightly
     container_name: selenium-router
     ports:
       - "4444:4444"
@@ -70,8 +56,6 @@ services:
       - selenium-distributor
       - selenium-sessions
       - selenium-session-queue
-    volumes:
-      - ./charts/selenium-grid/certs:/opt/selenium/secrets
     environment:
       - SE_DISTRIBUTOR_HOST=selenium-distributor
       - SE_DISTRIBUTOR_PORT=5553
@@ -79,49 +63,66 @@ services:
       - SE_SESSIONS_MAP_PORT=5556
       - SE_SESSION_QUEUE_HOST=selenium-session-queue
       - SE_SESSION_QUEUE_PORT=5559
-      - SE_ENABLE_TLS=true
 
   chrome:
-    image: selenium/node-chrome:4.24.0-20240907
+    image: selenium/node-chrome:nightly
     shm_size: 2gb
     depends_on:
       - selenium-event-bus
-    volumes:
-      - ./charts/selenium-grid/certs:/opt/selenium/secrets
     environment:
       - SE_EVENT_BUS_HOST=selenium-event-bus
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-      - SE_ENABLE_TLS=true
-      - SE_NODE_GRID_URL=https://localhost:4444
-      - SE_SERVER_PROTOCOL=https
 
   edge:
-    image: selenium/node-edge:4.24.0-20240907
+    image: selenium/node-edge:nightly
     shm_size: 2gb
     depends_on:
       - selenium-event-bus
-    volumes:
-      - ./charts/selenium-grid/certs:/opt/selenium/secrets
     environment:
       - SE_EVENT_BUS_HOST=selenium-event-bus
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-      - SE_ENABLE_TLS=true
-      - SE_NODE_GRID_URL=https://localhost:4444
-      - SE_SERVER_PROTOCOL=https
 
   firefox:
-    image: selenium/node-firefox:4.24.0-20240907
+    image: selenium/node-firefox:nightly
     shm_size: 2gb
     depends_on:
       - selenium-event-bus
-    volumes:
-      - ./charts/selenium-grid/certs:/opt/selenium/secrets
     environment:
       - SE_EVENT_BUS_HOST=selenium-event-bus
       - SE_EVENT_BUS_PUBLISH_PORT=4442
       - SE_EVENT_BUS_SUBSCRIBE_PORT=4443
-      - SE_ENABLE_TLS=true
-      - SE_NODE_GRID_URL=https://localhost:4444
-      - SE_SERVER_PROTOCOL=https
+
+  chrome_video:
+    image: selenium/video:nightly
+    volumes:
+      - /tmp/videos:/videos
+    depends_on:
+      - chrome
+    environment:
+      - DISPLAY_CONTAINER_NAME=chrome
+      - SE_NODE_GRID_URL=http://selenium-router:4444
+      - SE_VIDEO_FILE_NAME=auto
+
+  edge_video:
+    image: selenium/video:nightly
+    volumes:
+      - /tmp/videos:/videos
+    depends_on:
+      - edge
+    environment:
+      - DISPLAY_CONTAINER_NAME=edge
+      - SE_NODE_GRID_URL=http://selenium-router:4444
+      - SE_VIDEO_FILE_NAME=auto
+
+  firefox_video:
+    image: selenium/video:nightly
+    volumes:
+      - /tmp/videos:/videos
+    depends_on:
+      - firefox
+    environment:
+      - DISPLAY_CONTAINER_NAME=firefox
+      - SE_NODE_GRID_URL=http://selenium-router:4444
+      - SE_VIDEO_FILE_NAME=auto

@@ -13,6 +13,10 @@ global:
                   values:
                     - selenium
             topologyKey: "kubernetes.io/hostname"
+    topologySpreadConstraints:
+      - maxSkew: 4
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: DoNotSchedule
 
 selenium-grid:
   autoscaling:
@@ -20,6 +24,7 @@ selenium-grid:
     scalingType: deployment
 
   basicAuth:
+    enabled: true
     username: sysadmin
     password: strongPassword
 
@@ -84,11 +89,11 @@ selenium-grid:
     terminationGracePeriodSeconds: 7200
 
   firefoxNode:
-      affinity: *affinity
-      terminationGracePeriodSeconds: 720
+    affinity: *affinity
+    terminationGracePeriodSeconds: 720
 
   edgeNode:
-      affinity: *affinity
+    affinity: *affinity
 
   videoRecorder:
     enabled: true

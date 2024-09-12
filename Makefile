@@ -1,28 +1,31 @@
 NAME := $(or $(NAME),$(NAME),selenium)
 CURRENT_DATE := $(shell date '+%Y%m%d')
 BUILD_DATE := $(or $(BUILD_DATE),$(BUILD_DATE),$(CURRENT_DATE))
-BASE_RELEASE := $(or $(BASE_RELEASE),$(BASE_RELEASE),selenium-4.23.0)
-BASE_VERSION := $(or $(BASE_VERSION),$(BASE_VERSION),4.23.1)
-BINDING_VERSION := $(or $(BINDING_VERSION),$(BINDING_VERSION),4.23.1)
+BASE_RELEASE := $(or $(BASE_RELEASE),$(BASE_RELEASE),selenium-4.24.0)
+BASE_VERSION := $(or $(BASE_VERSION),$(BASE_VERSION),4.24.0)
+BINDING_VERSION := $(or $(BINDING_VERSION),$(BINDING_VERSION),4.24.0)
 BASE_RELEASE_NIGHTLY := $(or $(BASE_RELEASE_NIGHTLY),$(BASE_RELEASE_NIGHTLY),nightly)
-BASE_VERSION_NIGHTLY := $(or $(BASE_VERSION_NIGHTLY),$(BASE_VERSION_NIGHTLY),4.24.0-SNAPSHOT)
-VERSION := $(or $(VERSION),$(VERSION),4.23.1)
+BASE_VERSION_NIGHTLY := $(or $(BASE_VERSION_NIGHTLY),$(BASE_VERSION_NIGHTLY),4.25.0-SNAPSHOT)
+VERSION := $(or $(VERSION),$(VERSION),4.24.0)
 TAG_VERSION := $(VERSION)-$(BUILD_DATE)
 CHART_VERSION_NIGHTLY := $(or $(CHART_VERSION_NIGHTLY),$(CHART_VERSION_NIGHTLY),1.0.0-nightly)
 NAMESPACE := $(or $(NAMESPACE),$(NAMESPACE),$(NAME))
 AUTHORS := $(or $(AUTHORS),$(AUTHORS),SeleniumHQ)
 PUSH_IMAGE := $(or $(PUSH_IMAGE),$(PUSH_IMAGE),false)
 FROM_IMAGE_ARGS := --build-arg NAMESPACE=$(NAMESPACE) --build-arg VERSION=$(TAG_VERSION) --build-arg AUTHORS=$(AUTHORS) --sbom=true --attest type=provenance,mode=max
-BUILD_ARGS := $(BUILD_ARGS)
+BUILD_ARGS := $(BUILD_ARGS) --progress plain
 MAJOR := $(word 1,$(subst ., ,$(TAG_VERSION)))
 MINOR := $(word 2,$(subst ., ,$(TAG_VERSION)))
 MAJOR_MINOR_PATCH := $(word 1,$(subst -, ,$(TAG_VERSION)))
-FFMPEG_TAG_PREV_VERSION := $(or $(FFMPEG_TAG_PREV_VERSION),$(FFMPEG_TAG_PREV_VERSION),ffmpeg-7.0.1)
+FFMPEG_TAG_PREV_VERSION := $(or $(FFMPEG_TAG_PREV_VERSION),$(FFMPEG_TAG_PREV_VERSION),ffmpeg-7.0.2)
 FFMPEG_TAG_VERSION := $(or $(FFMPEG_TAG_VERSION),$(FFMPEG_TAG_VERSION),ffmpeg-7.0.2)
 FFMPEG_BASED_NAME := $(or $(FFMPEG_BASED_NAME),$(FFMPEG_BASED_NAME),linuxserver)
 FFMPEG_BASED_TAG := $(or $(FFMPEG_BASED_TAG),$(FFMPEG_BASED_TAG),7.0.2)
-PLATFORMS := $(or $(PLATFORMS),$(shell echo $$PLATFORMS),linux/amd64)
+CURRENT_PLATFORM := $(shell if [ `arch` = "aarch64" ]; then echo "linux/arm64"; else echo "linux/amd64"; fi)
+PLATFORMS := $(or $(PLATFORMS),$(shell echo $$PLATFORMS),$(CURRENT_PLATFORM))
 SEL_PASSWD := $(or $(SEL_PASSWD),$(SEL_PASSWD),secret)
+CHROMIUM_VERSION := $(or $(CHROMIUM_VERSION),$(CHROMIUM_VERSION),latest)
+SBOM_OUTPUT := $(or $(SBOM_OUTPUT),$(SBOM_OUTPUT),package_versions.txt)
 
 all: hub \
 	distributor \
@@ -42,6 +45,13 @@ all: hub \
 	standalone_docker \
 	video
 
+check_dev_env:
+	./tests/charts/make/chart_check_env.sh
+
+setup_dev_env:
+	./tests/charts/make/chart_setup_env.sh ; \
+  make set_containerd_image_store
+
 set_containerd_image_store:
 	sudo mkdir -p /etc/docker
 	sudo mv /etc/docker/daemon.json /etc/docker/daemon.json.bak || true
@@ -59,7 +69,23 @@ format_shell_scripts:
   EXIT_CODE=$$? ; \
   if [ $$EXIT_CODE -ne 0 ]; then \
 		echo "Some shell scripts are not formatted. Please run 'make format_shell_scripts' to format and update them." ; \
-		exit 1 ; \
+		exit $$EXIT_CODE ; \
+	fi ; \
+  exit $$EXIT_CODE
+
+generate_readme_charts:
+	if [ ! -f $$HOME/go/bin/helm-docs ] ; then \
+		echo "helm-docs is not installed. Please install it or run 'make setup_dev_env' once." ; \
+	else \
+		$$HOME/go/bin/helm-docs --chart-search-root charts/selenium-grid --output-file CONFIGURATION.md --sort-values-order file ; \
+	fi
+
+lint_readme_charts: generate_readme_charts
+	git diff --stat --exit-code ; \
+	EXIT_CODE=$$? ; \
+	if [ $$EXIT_CODE -ne 0 ]; then \
+			echo "New changes in chart. Please run 'make generate_readme_charts' to update them." ; \
+			exit $$EXIT_CODE ; \
 	fi ; \
   exit $$EXIT_CODE
 
@@ -75,7 +101,7 @@ set_build_multiarch:
 build_nightly:
 	BASE_VERSION=$(BASE_VERSION_NIGHTLY) BASE_RELEASE=$(BASE_RELEASE_NIGHTLY) make build
 
-build: all
+build: check_dev_env all
 	docker images | grep $(NAME)
 
 ci: build test
@@ -133,7 +159,7 @@ chrome_beta:
 	cd ./NodeChrome && docker buildx build --platform $(PLATFORMS) $(BUILD_ARGS) $(FROM_IMAGE_ARGS) --build-arg CHROME_VERSION=google-chrome-beta -t $(NAME)/node-chrome:beta .
 
 chromium: node_base
-	cd ./NodeChromium && docker buildx build --platform $(PLATFORMS) $(BUILD_ARGS) $(FROM_IMAGE_ARGS) -t $(NAME)/node-chromium:$(TAG_VERSION) .
+	cd ./NodeChromium && docker buildx build --platform $(PLATFORMS) $(BUILD_ARGS) $(FROM_IMAGE_ARGS) --build-arg CHROMIUM_VERSION=$(CHROMIUM_VERSION) -t $(NAME)/node-chromium:$(TAG_VERSION) .
 
 edge: node_base
 	case "$(PLATFORMS)" in \
@@ -316,6 +342,9 @@ release_latest:
 	docker push $(NAME)/standalone-docker:latest
 	docker push $(NAME)/video:latest
 
+generate_latest_sbom:
+	NAME=$(NAME) FILTER_IMAGE_TAG=latest OUTPUT_FILE=$(SBOM_OUTPUT) ./generate_sbom.sh
+
 tag_nightly:
 	docker tag $(NAME)/base:$(TAG_VERSION) $(NAME)/base:nightly
 	docker tag $(NAME)/hub:$(TAG_VERSION) $(NAME)/hub:nightly
@@ -357,6 +386,9 @@ release_nightly:
 	docker push $(NAME)/standalone-firefox:nightly
 	docker push $(NAME)/standalone-docker:nightly
 	docker push $(NAME)/video:nightly
+
+generate_nightly_sbom:
+	NAME=$(NAME) FILTER_IMAGE_TAG=nightly OUTPUT_FILE=$(SBOM_OUTPUT) ./generate_sbom.sh
 
 tag_major_minor:
 	docker tag $(NAME)/base:$(TAG_VERSION) $(NAME)/base:$(MAJOR)
@@ -560,8 +592,13 @@ test_edge_standalone:
       ;; \
   esac
 
-test_firefox:
-	PLATFORMS=$(PLATFORMS) VERSION=$(TAG_VERSION) NAMESPACE=$(NAMESPACE) BASE_RELEASE=$(BASE_RELEASE) BASE_VERSION=$(BASE_VERSION) BINDING_VERSION=$(BINDING_VERSION) SKIP_BUILD=true ./tests/bootstrap.sh NodeFirefox
+test_firefox_download_lang_packs:
+	FIREFOX_VERSION=$$(curl -sk https://product-details.mozilla.org/1.0/firefox_versions.json | jq -r '.LATEST_FIREFOX_VERSION') ; \
+	./NodeFirefox/get_lang_package.sh $$FIREFOX_VERSION ./tests/target/firefox_lang_packs
+
+test_firefox: test_firefox_download_lang_packs
+	PLATFORMS=$(PLATFORMS) VERSION=$(TAG_VERSION) NAMESPACE=$(NAMESPACE) BASE_RELEASE=$(BASE_RELEASE) BASE_VERSION=$(BASE_VERSION) BINDING_VERSION=$(BINDING_VERSION) SKIP_BUILD=true \
+	TEST_FIREFOX_INSTALL_LANG_PACKAGE=true ./tests/bootstrap.sh NodeFirefox
 
 test_firefox_standalone:
 	PLATFORMS=$(PLATFORMS) VERSION=$(TAG_VERSION) NAMESPACE=$(NAMESPACE) BASE_RELEASE=$(BASE_RELEASE) BASE_VERSION=$(BASE_VERSION) BINDING_VERSION=$(BINDING_VERSION) SKIP_BUILD=true ./tests/bootstrap.sh StandaloneFirefox
@@ -606,10 +643,10 @@ test_parallel: hub chrome firefox edge chromium video
 	make test_video_integrity
 
 test_video_standalone: standalone_chrome standalone_chromium standalone_firefox standalone_edge
-	DOCKER_COMPOSE_FILE=docker-compose-v3-test-standalone.yml TEST_DELAY_AFTER_TEST=2 make test_video
+	DOCKER_COMPOSE_FILE=docker-compose-v3-test-standalone.yml TEST_DELAY_AFTER_TEST=2 HUB_CHECKS_INTERVAL=45 make test_video
 
 test_video_dynamic_name:
-	VIDEO_FILE_NAME=auto TEST_DELAY_AFTER_TEST=2 \
+	VIDEO_FILE_NAME=auto TEST_DELAY_AFTER_TEST=2 HUB_CHECKS_INTERVAL=45 TEST_ADD_CAPS_RECORD_VIDEO=false \
 	make test_video
 
 # This should run on its own CI job. There is no need to combine it with the other tests.
@@ -620,7 +657,11 @@ test_video: video hub chrome firefox edge chromium
 	sudo chmod -R 777 ./tests/videos
 	docker_compose_file=$(or $(DOCKER_COMPOSE_FILE), docker-compose-v3-test-video.yml) ; \
 	list_of_tests_amd64=$(or $(LIST_OF_TESTS_AMD64), "NodeChrome NodeChromium NodeFirefox NodeEdge") ; \
-	list_of_tests_arm64=$(or $(LIST_OF_TESTS_ARM64), "NodeChromium NodeFirefox") ; \
+	list_of_tests_arm64=$(or $(LIST_OF_TESTS_ARM64), "NodeFirefox NodeChromium") ; \
+	TEST_FIREFOX_INSTALL_LANG_PACKAGE=$(or $(TEST_FIREFOX_INSTALL_LANG_PACKAGE), "true") ; \
+	if [ "$${TEST_FIREFOX_INSTALL_LANG_PACKAGE}" = "true" ]; then \
+		make test_firefox_download_lang_packs ; \
+	fi ; \
 	if [ "$(PLATFORMS)" = "linux/amd64" ]; then \
 			list_nodes="$${list_of_tests_amd64}" ; \
 	else \
@@ -634,10 +675,13 @@ test_video: video hub chrome firefox edge chromium
 			echo UID=$$(id -u) >> .env ; \
 			echo BINDING_VERSION=$(BINDING_VERSION) >> .env ; \
 			echo TEST_DELAY_AFTER_TEST=$(or $(TEST_DELAY_AFTER_TEST), 2) >> .env ; \
+			echo HUB_CHECKS_INTERVAL=$(or $(HUB_CHECKS_INTERVAL), 45) >> .env ; \
 			echo SELENIUM_ENABLE_MANAGED_DOWNLOADS=$(or $(SELENIUM_ENABLE_MANAGED_DOWNLOADS), "true") >> .env ; \
+			echo TEST_FIREFOX_INSTALL_LANG_PACKAGE=$${TEST_FIREFOX_INSTALL_LANG_PACKAGE} >> .env ; \
 			echo BASIC_AUTH_USERNAME=$(or $(BASIC_AUTH_USERNAME), "admin") >> .env ; \
 			echo BASIC_AUTH_PASSWORD=$(or $(BASIC_AUTH_PASSWORD), "admin") >> .env ; \
 			echo SUB_PATH=$(or $(SUB_PATH), "/selenium") >> .env ; \
+			echo TEST_ADD_CAPS_RECORD_VIDEO=$(or $(TEST_ADD_CAPS_RECORD_VIDEO), "true") >> .env ; \
 			if [ $$node = "NodeChrome" ] ; then \
 					echo BROWSER=chrome >> .env ; \
 					echo VIDEO_FILE_NAME=$${VIDEO_FILE_NAME:-"chrome_video.mp4"} >> .env ; \
@@ -647,6 +691,7 @@ test_video: video hub chrome firefox edge chromium
 					echo BROWSER=chromium >> .env ; \
 					echo VIDEO_FILE_NAME=$${VIDEO_FILE_NAME:-"chromium_video.mp4"} >> .env ; \
 					echo VIDEO_FILE_NAME_SUFFIX=$${VIDEO_FILE_NAME_SUFFIX:-"true"} >> .env ; \
+					echo SELENIUM_GRID_TEST_HEADLESS=true >> .env ; \
 			fi ; \
 			if [ $$node = "NodeEdge" ] ; then \
 					echo BROWSER=edge >> .env ; \
@@ -696,6 +741,7 @@ test_node_relay: hub node_base standalone_firefox
 			if [ $$node = "NodeChromium" ] ; then \
 					echo BROWSER=chromium >> .env \
 					&& echo BROWSER_NAME=chrome >> .env ; \
+					echo SELENIUM_GRID_TEST_HEADLESS=true >> .env ; \
 			fi ; \
 			if [ $$node = "NodeEdge" ] ; then \
 					echo BROWSER=edge >> .env \
@@ -712,7 +758,7 @@ test_node_relay: hub node_base standalone_firefox
 	done
 
 test_standalone_docker: standalone_docker
-	DOCKER_COMPOSE_FILE=docker-compose-v3-test-standalone-docker.yaml CONFIG_FILE=standalone_docker_config.toml \
+	DOCKER_COMPOSE_FILE=docker-compose-v3-test-standalone-docker.yaml CONFIG_FILE=standalone_docker_config.toml HUB_CHECKS_INTERVAL=45 \
 	RECORD_STANDALONE=true GRID_URL=http://0.0.0.0:4444 LIST_OF_TESTS_AMD64="DeploymentAutoscaling" TEST_PARALLEL_HARDENING=true TEST_DELAY_AFTER_TEST=2 \
 	SELENIUM_ENABLE_MANAGED_DOWNLOADS=true LOG_LEVEL=SEVERE SKIP_CHECK_DOWNLOADS_VOLUME=true make test_node_docker
 
@@ -723,7 +769,7 @@ test_node_docker: hub standalone_docker standalone_chrome standalone_firefox sta
 	docker_compose_file=$(or $(DOCKER_COMPOSE_FILE), docker-compose-v3-test-node-docker.yaml) ; \
 	config_file=$(or $(CONFIG_FILE), config.toml) ; \
 	list_of_tests_amd64=$(or $(LIST_OF_TESTS_AMD64), "NodeChrome NodeChromium NodeFirefox NodeEdge") ; \
-	list_of_tests_arm64=$(or $(LIST_OF_TESTS_ARM64), "NodeChromium NodeFirefox") ; \
+	list_of_tests_arm64=$(or $(LIST_OF_TESTS_ARM64), "NodeFirefox NodeChromium") ; \
 	if [ "$(PLATFORMS)" = "linux/amd64" ]; then \
 			list_nodes="$${list_of_tests_amd64}" ; \
 	else \
@@ -744,22 +790,27 @@ test_node_docker: hub standalone_docker standalone_chrome standalone_firefox sta
 			echo TEST_DELAY_AFTER_TEST=$(or $(TEST_DELAY_AFTER_TEST), 2) >> .env ; \
 			echo RECORD_STANDALONE=$(or $(RECORD_STANDALONE), "true") >> .env ; \
 			echo GRID_URL=$(or $(GRID_URL), "") >> .env ; \
+			echo HUB_CHECKS_INTERVAL=$(or $(HUB_CHECKS_INTERVAL), 20) >> .env ; \
 			echo NODE=$$node >> .env ; \
 			echo UID=$$(id -u) >> .env ; \
 			echo BINDING_VERSION=$(BINDING_VERSION) >> .env ; \
 			echo HOST_IP=$$(hostname -I | awk '{print $$1}') >> .env ; \
 			if [ "$(PLATFORMS)" = "linux/amd64" ]; then \
-					echo NODE_EDGE=edge >> .env ; \
+					NODE_EDGE=edge ; \
+					NODE_CHROME=chrome ; \
 			else \
-					echo NODE_EDGE=chromium >> .env ; \
+					NODE_EDGE=chromium ; \
+					NODE_CHROME=chromium ; \
 			fi; \
+			echo NODE_EDGE=$${NODE_EDGE} >> .env ; \
 			if [ $$node = "NodeChrome" ] ; then \
-					echo NODE_CHROME=chrome >> .env ; \
+					echo NODE_CHROME=$${NODE_CHROME} >> .env ; \
 			fi ; \
 			if [ $$node = "NodeChromium" ] ; then \
 					echo NODE_CHROME=chromium >> .env ; \
+					echo SELENIUM_GRID_TEST_HEADLESS=true >> .env ; \
 			else \
-					echo NODE_CHROME=chromium >> .env ; \
+					echo NODE_CHROME=$${NODE_CHROME} >> .env ; \
 			fi ; \
 			export $$(cat .env | xargs) ; \
 			envsubst < $${config_file} > ./videos/config.toml ; \
@@ -774,9 +825,6 @@ test_node_docker: hub standalone_docker standalone_chrome standalone_firefox sta
 
 test_custom_ca_cert:
 	VERSION=$(TAG_VERSION) NAMESPACE=$(NAMESPACE) ./tests/customCACert/bootstrap.sh
-
-chart_setup_env:
-	./tests/charts/make/chart_setup_env.sh
 
 chart_cluster_setup:
 	VERSION=$(TAG_VERSION) NAMESPACE=$(NAMESPACE) BUILD_DATE=$(BUILD_DATE) ./tests/charts/make/chart_cluster_setup.sh

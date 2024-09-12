@@ -18,7 +18,7 @@ trap 'on_failure' ERR
 
 echo "Installing Docker for AMD64 / ARM64"
 sudo apt-get update -qq || true
-sudo apt-get install -yq ca-certificates curl
+sudo apt-get install -yq ca-certificates curl wget jq
 sudo install -m 0755 -d /etc/apt/keyrings
 sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
 sudo chmod a+r /etc/apt/keyrings/docker.asc
@@ -56,6 +56,10 @@ curl -fsSL -o ./docker-compose "https://github.com/docker/compose/releases/downl
 chmod +x ./docker-compose
 sudo mv ./docker-compose /usr/libexec/docker/cli-plugins
 docker compose version
+echo "==============================="
+echo "Install Docker SBOMs plugin"
+curl -sSfL https://raw.githubusercontent.com/docker/sbom-cli-plugin/main/install.sh | sh -s --
+docker sbom --version
 echo "==============================="
 if [ "${CLUSTER}" = "kind" ]; then
     echo "Installing kind for AMD64 / ARM64"
@@ -155,6 +159,10 @@ sudo cp -frp /opt/ct/ct /usr/local/bin/ct
 sudo cp -frp /opt/ct/etc /etc/ct
 rm -rf ct.tar.gz
 ct version
+echo "==============================="
+echo "Installing helm-docs for AMD64 / ARM64"
+go install github.com/norwoodj/helm-docs/cmd/helm-docs@latest
+$HOME/go/bin/helm-docs -h
 echo "==============================="
 echo "Installing envsubst for AMD64 / ARM64"
 ENVSUBST_VERSION="v1.4.2"

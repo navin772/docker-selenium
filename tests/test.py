@@ -5,9 +5,33 @@ import sys
 import unittest
 import re
 import platform
+import signal
 
 import docker
 from docker.errors import NotFound
+
+def clean_up():
+  logger.info("Cleaning up...")
+
+  test_container = client.containers.get(test_container_id)
+  test_container.kill()
+  test_container.remove()
+
+  if standalone:
+     logger.info("Standalone Cleaned up")
+  else:
+     # Kill the launched hub
+     hub = client.containers.get(hub_id)
+     hub.kill()
+     hub.remove()
+     logger.info("Hub / Node Cleaned up")
+
+def signal_handler(signum, frame):
+    clean_up()
+    sys.exit(0)
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGQUIT, signal_handler)
 
 # LOGGING #
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -22,6 +46,7 @@ https_proxy = os.environ.get('https_proxy', '')
 no_proxy = os.environ.get('no_proxy', '')
 SKIP_BUILD = os.environ.get('SKIP_BUILD', False)
 PLATFORMS = os.environ.get('PLATFORMS', 'linux/amd64')
+FILESYSTEM_READ_ONLY = os.environ.get('FILESYSTEM_READ_ONLY', 'false').lower() == 'true'
 BASE_VERSION = os.environ.get('BASE_VERSION')
 BASE_RELEASE = os.environ.get('BASE_RELEASE')
 
@@ -176,6 +201,8 @@ def launch_container(container, **kwargs):
                                          detach=True,
                                          environment=environment,
                                          shm_size="2G",
+                                         read_only=FILESYSTEM_READ_ONLY,
+                                         tmpfs={'/tmp': 'rw'},
                                          **kwargs).short_id
     logger.info("%s up and running" % container)
     return container_id
@@ -272,20 +299,7 @@ if __name__ == '__main__':
 
     # Avoiding a container cleanup if tests run inside docker compose
     if not run_in_docker_compose:
-        logger.info("Cleaning up...")
-
-        test_container = client.containers.get(test_container_id)
-        test_container.kill()
-        test_container.remove()
-
-        if standalone:
-           logger.info("Standalone Cleaned up")
-        else:
-           # Kill the launched hub
-           hub = client.containers.get(hub_id)
-           hub.kill()
-           hub.remove()
-           logger.info("Hub / Node Cleaned up")
+        clean_up()
 
     if failed:
         exit(1)

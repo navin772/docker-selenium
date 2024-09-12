@@ -1,3 +1,51 @@
+## :heavy_check_mark: selenium-grid-0.35.2
+
+- Chart is using image tag 4.24.0-20240907
+- Chart is tested on Kubernetes versions: v1.26.15, v1.27.16, v1.28.13, v1.29.8, v1.30.4, v1.31.0, 
+- Chart is tested on container runtime Docker versions: 24.0.9, 24.0.9, 24.0.9, 25.0.5, 26.1.4, 27.2.0, 
+- Chart is tested on Helm versions: v3.10.3, v3.11.3, v3.12.3, v3.13.3, v3.14.4, v3.15.4, 
+
+### Changed
+- [`9a2afbc0`](http://github.com/seleniumhq/docker-selenium/commit/9a2afbc0290ef031e7458306219f2e8491cefb4d) - chore(deps): update helm release kube-prometheus-stack to v62.6.0 (#2385) :: renovate[bot]
+- [`44d92249`](http://github.com/seleniumhq/docker-selenium/commit/44d922495cc686d3fc48605e2b3d9d0836f399a5) - chart(fix): ensure images are pre-pulled and started together in Node (#2387) :: Viet Nguyen Duc
+- [`5f42b308`](http://github.com/seleniumhq/docker-selenium/commit/5f42b30815bf32eb170822c09161c03858f46fc7) - update: config basicAuth.enabled is false by default :: Viet Nguyen Duc
+- [`c8cd02b8`](http://github.com/seleniumhq/docker-selenium/commit/c8cd02b8c17b530539b38a711bd9f7938f268d4d) - Update chart 0.35.1 changelog [skip ci] :: Selenium CI Bot
+
+## :heavy_check_mark: selenium-grid-0.35.1
+
+- Chart is using image tag 4.24.0-20240907
+- Chart is tested on Kubernetes versions: v1.26.15, v1.27.16, v1.28.13, v1.29.8, v1.30.4, v1.31.0, 
+- Chart is tested on container runtime Docker versions: 24.0.9, 24.0.9, 24.0.9, 25.0.5, 26.1.4, 27.2.0, 
+- Chart is tested on Helm versions: v3.10.3, v3.11.3, v3.12.3, v3.13.3, v3.14.4, v3.15.4, 
+
+### Changed
+- [`bcc20e28`](http://github.com/seleniumhq/docker-selenium/commit/bcc20e28ce1301fbe01b06b8e8ace72b0972026a) - Update tag 4.24.0-20240907 in docs and files :: Selenium CI Bot
+- [`b53dc3fb`](http://github.com/seleniumhq/docker-selenium/commit/b53dc3fb37815b4310eb7c047ff17dc364a2f839) - update: config supervisord via ENV variables :: Viet Nguyen Duc
+- [`44d8bb53`](http://github.com/seleniumhq/docker-selenium/commit/44d8bb532b4501dc0115bd2537cc2fbc1ab40422) - chore(deps): update helm release kube-prometheus-stack to v62.5.0 (#2384) :: renovate[bot]
+- [`e4858833`](http://github.com/seleniumhq/docker-selenium/commit/e4858833a5229f8f5b9cc3a41fdd290e7b3a6e13) - chore(deps): update helm release kube-prometheus-stack to v62.4.0 (#2383) :: renovate[bot]
+- [`4f2a6e41`](http://github.com/seleniumhq/docker-selenium/commit/4f2a6e41e793e5c17c41ae000f6499bdd311782d) - chart(add): set topologySpreadConstraints for components :: Viet Nguyen Duc
+- [`80ebff0f`](http://github.com/seleniumhq/docker-selenium/commit/80ebff0f95b48b3a395719222d32108ec246661b) - build: auto generate table of chart configuration parameter :: Viet Nguyen Duc
+- [`53e48937`](http://github.com/seleniumhq/docker-selenium/commit/53e48937779cde056debc60c801a1a747152740e) - Update chart 0.35.0 changelog [skip ci] :: Selenium CI Bot
+
+## :heavy_check_mark: selenium-grid-0.35.0
+
+- Chart is using image tag 4.24.0-20240830
+- Chart is tested on Kubernetes versions: v1.25.16, v1.26.15, v1.27.16, v1.28.13, v1.29.8, v1.30.4, 
+- Chart is tested on container runtime Docker versions: 
+- Chart is tested on Helm versions: v3.10.3, v3.11.3, v3.12.3, v3.13.3, v3.14.4, v3.15.4, 
+
+### Changed
+- [`c3107507`](http://github.com/seleniumhq/docker-selenium/commit/c31075079cad81cf82e4cc3ffb49a37dab5c3a3a) - Update tag 4.24.0-20240830 in docs and files :: Selenium CI Bot
+- [`4c0d9d9a`](http://github.com/seleniumhq/docker-selenium/commit/4c0d9d9a3c3707d456e481f64fbc0a899b9b7552) - chart(rollback): config `ingress.enabled` to create ingress resource only :: Viet Nguyen Duc
+- [`4e00e3e3`](http://github.com/seleniumhq/docker-selenium/commit/4e00e3e3d2e529f9f40c2b9988eb5d5c852912a9) - chore(deps): update helm release kube-prometheus-stack to v62.3.1 (#2376) :: renovate[bot]
+- [`a7e5c405`](http://github.com/seleniumhq/docker-selenium/commit/a7e5c4052f1fc2531b5f27fc47ecb758c44a0054) - update: Selenium Grid 4.24.0 :: Viet Nguyen Duc
+- [`6216a4d9`](http://github.com/seleniumhq/docker-selenium/commit/6216a4d941b5134248bd5353ebcbe87e53f53377) - chart(feat): updateStrategy default RollingUpdate for browsers and Recreate for components :: Viet Nguyen Duc
+- [`deb9d308`](http://github.com/seleniumhq/docker-selenium/commit/deb9d3086130a82d6b2a4dea936c79ef82f8780f) - chore(deps): update helm release kube-prometheus-stack to v62.3.0 (#2367) :: renovate[bot]
+- [`b4dc1124`](http://github.com/seleniumhq/docker-selenium/commit/b4dc11241f9cb5af781325c92632ec2df3fd0bd5) - chore(deps): update helm release jaeger to v3.2.0 (#2371) :: renovate[bot]
+- [`ed2af419`](http://github.com/seleniumhq/docker-selenium/commit/ed2af4193a26cae34d61376dc1d9a76633c36ec0) - update: FFmpeg 7.0.2 and fix video container termination (#2374) :: Viet Nguyen Duc
+- [`918765fa`](http://github.com/seleniumhq/docker-selenium/commit/918765fa8d2176da9e82bf57a1ccafab11dc1ccb) - update: graceful shutdown for recording sidecar container in K8s :: Viet Nguyen Duc
+- [`d26a433b`](http://github.com/seleniumhq/docker-selenium/commit/d26a433b914f914b0b22b62084772fa138ae93d7) - Update chart changelog [skip ci] :: Selenium CI Bot
+
 ## :heavy_check_mark: selenium-grid-0.34.3
 
 - Chart is using image tag 4.23.1-20240820

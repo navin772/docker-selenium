@@ -64,8 +64,7 @@ jobs:
           timeout_minutes: 10
           max_attempts: 3
           command: |
-            make chart_setup_env
-            make set_containerd_image_store
+            make setup_dev_env
       - name: Output Docker info
         run: docker info
       - name: Set Selenium base version
@@ -102,6 +101,8 @@ jobs:
         run: echo ${LATEST_TAG}
       - name: Update tag in docs and files
         run: ./update_tag_in_docs_and_files.sh ${LATEST_TAG} ${NEXT_TAG}
+      - name: Update chart configuration docs
+        run: make generate_readme_charts
       - name: Build Helm chart
         uses: nick-invision/retry@master
         with:
@@ -134,8 +135,9 @@ jobs:
         uses: nick-invision/retry@master
         with:
           timeout_minutes: 20
-          max_attempts: 3
-          retry_wait_seconds: 120
+          max_attempts: 5
+          retry_wait_seconds: 300
+          continue_on_error: true
           command: VERSION="${GRID_VERSION}" BUILD_DATE=${BUILD_DATE} make release
       - name: Tag images as latest
         if: github.event.inputs.skip-build-push-image != 'true'
@@ -145,16 +147,20 @@ jobs:
         uses: nick-invision/retry@master
         with:
           timeout_minutes: 20
-          max_attempts: 3
-          retry_wait_seconds: 120
+          max_attempts: 5
+          retry_wait_seconds: 300
+          continue_on_error: true
           command: VERSION="${GRID_VERSION}" BUILD_DATE=${BUILD_DATE} make release_latest
+      - name: Update package versions
+        run: make generate_latest_sbom
       - name: Tag browser images
         if: github.event.inputs.skip-build-push-image != 'true'
         uses: nick-invision/retry@master
         with:
           timeout_minutes: 20
-          max_attempts: 3
-          retry_wait_seconds: 120
+          max_attempts: 5
+          retry_wait_seconds: 300
+          continue_on_error: true
           command: VERSION="${GRID_VERSION}" BUILD_DATE=${BUILD_DATE} PUSH_IMAGE=true make tag_and_push_browser_images
       - name: Delete previous nightly tag & release if any
         uses: dev-drprasad/delete-tag-and-release@master
@@ -197,4 +203,6 @@ jobs:
           prerelease: ${{ env.PRERELEASE }}
           draft: false
           append_body: false
-          files: ${{ env.PUBLISH_YAML_MANIFESTS }}
+          files: |
+            package_versions.txt
+            ${{ env.PUBLISH_YAML_MANIFESTS }}

@@ -1,14 +1,14 @@
 global:
   seleniumGrid:
     logLevel: INFO
-    stdoutProbeLog: false
+    stdoutProbeLog: true
 
 serverConfigMap:
   env:
     SE_SUPERVISORD_LOG_LEVEL: "info"
 
 ingress:
-  enabled: true
+  enableWithController: true
   className: nginx
   hostname: ""
 
@@ -27,6 +27,8 @@ hub:
       value: "15"
     - name: SE_REJECT_UNSUPPORTED_CAPS
       value: "false"
+    - name: SE_LOG_LISTEN_GRAPHQL
+      value: "true"
 
 components:
   extraEnvironmentVariables: *extraEnvironmentVariables

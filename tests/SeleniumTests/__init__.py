@@ -25,6 +25,8 @@ TEST_DELAY_AFTER_TEST = int(os.environ.get('TEST_DELAY_AFTER_TEST', 0))
 TEST_NODE_RELAY = os.environ.get('TEST_NODE_RELAY', 'false')
 TEST_ANDROID_PLATFORM_API = os.environ.get('ANDROID_PLATFORM_API')
 TEST_PLATFORMS = os.environ.get('TEST_PLATFORMS', 'linux/amd64')
+TEST_FIREFOX_INSTALL_LANG_PACKAGE = os.environ.get('TEST_FIREFOX_INSTALL_LANG_PACKAGE', 'false').lower() == 'true'
+TEST_ADD_CAPS_RECORD_VIDEO = os.environ.get('TEST_ADD_CAPS_RECORD_VIDEO', 'true').lower() == 'true'
 
 if SELENIUM_GRID_USERNAME and SELENIUM_GRID_PASSWORD:
     SELENIUM_GRID_HOST = f"{SELENIUM_GRID_USERNAME}:{SELENIUM_GRID_PASSWORD}@{SELENIUM_GRID_HOST}"
@@ -128,7 +130,8 @@ class ChromeTests(SeleniumGenericTests):
             options = ChromeOptions()
             options.enable_downloads = SELENIUM_ENABLE_MANAGED_DOWNLOADS
             options.add_argument('disable-features=DownloadBubble,DownloadBubbleV2')
-            options.set_capability('se:recordVideo', True)
+            if TEST_ADD_CAPS_RECORD_VIDEO:
+                options.set_capability('se:recordVideo', True)
             options.set_capability('se:name', f"{self._testMethodName} ({self.__class__.__name__})")
             options.set_capability('se:screenResolution', '1920x1080')
             if SELENIUM_GRID_TEST_HEADLESS:
@@ -164,7 +167,8 @@ class EdgeTests(SeleniumGenericTests):
             options = EdgeOptions()
             options.enable_downloads = SELENIUM_ENABLE_MANAGED_DOWNLOADS
             options.add_argument('disable-features=DownloadBubble,DownloadBubbleV2')
-            options.set_capability('se:recordVideo', True)
+            if TEST_ADD_CAPS_RECORD_VIDEO:
+                options.set_capability('se:recordVideo', True)
             options.set_capability('se:name', f"{self._testMethodName} ({self.__class__.__name__})")
             options.set_capability('se:screenResolution', '1920x1080')
             if SELENIUM_GRID_TEST_HEADLESS:
@@ -187,10 +191,13 @@ class FirefoxTests(SeleniumGenericTests):
             profile = webdriver.FirefoxProfile()
             profile.set_preference("browser.download.manager.showWhenStarting", False)
             profile.set_preference("browser.helperApps.neverAsk.saveToDisk", "*/*")
+            profile.set_preference('intl.accept_languages', 'vi-VN,vi')
+            profile.set_preference('intl.locale.requested', 'vi-VN,vi')
             options = FirefoxOptions()
             options.profile = profile
             options.enable_downloads = SELENIUM_ENABLE_MANAGED_DOWNLOADS
-            options.set_capability('se:recordVideo', True)
+            if TEST_ADD_CAPS_RECORD_VIDEO:
+                options.set_capability('se:recordVideo', True)
             options.set_capability('se:name', f"{self._testMethodName} ({self.__class__.__name__})")
             options.set_capability('se:screenResolution', '1920x1080')
             if SELENIUM_GRID_TEST_HEADLESS:
@@ -211,6 +218,20 @@ class FirefoxTests(SeleniumGenericTests):
         self.driver.get('https://the-internet.herokuapp.com')
         self.driver.maximize_window()
         self.assertTrue(self.driver.title == 'The Internet')
+
+    def test_accept_languages(self):
+        if TEST_FIREFOX_INSTALL_LANG_PACKAGE:
+            addon_id = webdriver.Firefox.install_addon(self.driver, "./target/firefox_lang_packs/langpack-vi@firefox.mozilla.org.xpi")
+        self.driver.get('https://gtranslate.io/detect-browser-language')
+        wait = WebDriverWait(self.driver, WEB_DRIVER_WAIT_TIMEOUT)
+        lang_code = wait.until(
+            EC.presence_of_element_located((By.XPATH, '(//*[@class="notranslate"])[1]'))
+        )
+        self.driver.execute_script("arguments[0].scrollIntoView();", lang_code)
+        self.assertTrue(lang_code.text == 'vi-VN', "Language code should be vi-VN")
+        time.sleep(1)
+        self.driver.get('https://google.com')
+        time.sleep(2)
 
 class Autoscaling():
     def run(self, test_classes):

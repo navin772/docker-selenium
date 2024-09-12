@@ -10,22 +10,21 @@ USER root
 # Firefox
 #=========
 ARG FIREFOX_VERSION=latest
-ARG TARGETARCH
 RUN if [ "$(dpkg --print-architecture)" = "amd64" ]; then \
         FIREFOX_DOWNLOAD_URL=$(if [ $FIREFOX_VERSION = "latest" ] || [ $FIREFOX_VERSION = "beta-latest" ] || [ $FIREFOX_VERSION = "nightly-latest" ] || [ $FIREFOX_VERSION = "devedition-latest" ] || [ $FIREFOX_VERSION = "esr-latest" ]; then echo "https://download.mozilla.org/?product=firefox-$FIREFOX_VERSION-ssl&os=linux64&lang=en-US"; else echo "https://download-installer.cdn.mozilla.net/pub/firefox/releases/$FIREFOX_VERSION/linux-x86_64/en-US/firefox-$FIREFOX_VERSION.tar.bz2"; fi) ; \
     else \
         FIREFOX_DOWNLOAD_URL="https://download.mozilla.org/?product=firefox-nightly-latest-ssl&os=linux64-aarch64&lang=en-US" ; \
     fi \
   && apt-get update -qqy \
-  && apt-get -qqy --no-install-recommends install libavcodec-extra \
-     libgtk-3-dev libdbus-glib-1-dev \
-  && rm -rf /var/lib/apt/lists/* /var/cache/apt/* \
+  && apt-get -qqy --no-install-recommends install libavcodec-extra libgtk-3-dev libdbus-glib-1-dev \
+  && rm -rf /var/lib/apt/lists/* /var/cache/apt/* ${HOME}/firefox \
   && wget --no-verbose -O /tmp/firefox.tar.bz2 $FIREFOX_DOWNLOAD_URL \
-  && rm -rf /opt/firefox \
-  && tar -C /opt -xjf /tmp/firefox.tar.bz2 \
+  && tar -C ${HOME} -xjf /tmp/firefox.tar.bz2 \
   && rm /tmp/firefox.tar.bz2 \
-  && mv /opt/firefox /opt/firefox-$FIREFOX_VERSION \
-  && ln -fs /opt/firefox-$FIREFOX_VERSION/firefox /usr/bin/firefox
+  && mkdir -p ${HOME}/firefox/distribution/extensions \
+  && setfacl -Rm u:${SEL_USER}:rwx ${HOME}/firefox \
+  && setfacl -Rm g:${SEL_GROUP}:rwx ${HOME}/firefox \
+  && ln -fs ${HOME}/firefox/firefox /usr/bin/firefox
 
 #============
 # GeckoDriver
@@ -46,16 +45,19 @@ RUN LATEST_VERSION=$(curl -sk https://api.github.com/repos/mozilla/geckodriver/r
 #============================================
 # Firefox cleanup script and supervisord file
 #============================================
-COPY firefox-cleanup.sh /opt/bin/firefox-cleanup.sh
-COPY firefox-cleanup.conf /etc/supervisor/conf.d/firefox-cleanup.conf
+COPY --chown="${SEL_UID}:${SEL_GID}" firefox-cleanup.sh get_lang_package.sh /opt/bin/
+COPY --chown="${SEL_UID}:${SEL_GID}" firefox-cleanup.conf /etc/supervisor/conf.d/firefox-cleanup.conf
+RUN chmod +x /opt/bin/firefox-cleanup.sh /opt/bin/get_lang_package.sh
 
 USER ${SEL_UID}
 
 #============================================
 # Dumping Browser information for config
 #============================================
-RUN echo "firefox" > /opt/selenium/browser_name
-RUN firefox --version | awk '{print $3}' > /opt/selenium/browser_version
-RUN echo "\"moz:firefoxOptions\": {\"binary\": \"/usr/bin/firefox\"}" > /opt/selenium/browser_binary_location
+RUN echo "firefox" > /opt/selenium/browser_name \
+    && firefox --version | awk '{print $3}' > /opt/selenium/browser_version \
+    && echo "\"moz:firefoxOptions\": {\"binary\": \"/usr/bin/firefox\"}" > /opt/selenium/browser_binary_location \
+    # Download the language pack for Firefox
+    && /opt/bin/get_lang_package.sh
 
 ENV SE_OTEL_SERVICE_NAME="selenium-node-firefox"
