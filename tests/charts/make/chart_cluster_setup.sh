@@ -45,8 +45,8 @@ elif [ "${CLUSTER}" = "minikube" ]; then
   echo "Start Minikube cluster"
   sudo chmod 777 /tmp
   export CHANGE_MINIKUBE_NONE_USER=true
-  sudo -SE minikube start --vm-driver=none \
-  --kubernetes-version=${KUBERNETES_VERSION} --network-plugin=cni --cni=${CNI} --container-runtime=${CONTAINER_RUNTIME} --wait=all
+  sudo -SE minikube start --force \
+  --kubernetes-version=v1.30.0 --network-plugin=cni --cni=${CNI} --container-runtime=${CONTAINER_RUNTIME} --wait=all
   sudo chown -R $USER $HOME/.kube $HOME/.minikube
 fi
 

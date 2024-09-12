@@ -1365,3 +1365,12 @@ jaeger:
     enabled: false
   query:
     enabled: false
+
+cronjob:
+  enabled: false
+  schedule: "0 0 * * *"  # Default to midnight every day
+  image: "busybox"
+  imagePullPolicy: "IfNotPresent"
+  command: "echo Hello, World!"
+  env: []
+  restartPolicy: "OnFailure"

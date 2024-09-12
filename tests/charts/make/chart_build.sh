@@ -1,5 +1,5 @@
 #!/bin/bash
-set -x
+set -euxo pipefail
 
 SET_VERSION=${SET_VERSION:-"true"}
 CHART_PATH=${CHART_PATH:-"charts/selenium-grid"}
@@ -16,7 +16,7 @@ trap 'on_failure' ERR
 cd tests || true
 
 if [ "${CI:-false}" = "false" ]; then
-  pip3 install virtualenv | grep -v 'Requirement already satisfied'
+  pip3 install virtualenv
   virtualenv docker-selenium-tests
   source docker-selenium-tests/bin/activate
 else
@@ -26,7 +26,7 @@ fi
 
 python3 -m pip install yamale==4.0.4 \
                       yamllint==1.33.0 \
-                      | grep -v 'Requirement already satisfied' || true
+                      || true
 
 cd ..
 rm -rf ${CHART_PATH}/Chart.lock
